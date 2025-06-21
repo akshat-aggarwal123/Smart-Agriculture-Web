@@ -1,0 +1,15 @@
+model:
+  type: "tensorflow"
+  epochs: 150
+  batch_size: 32
+  learning_rate: 0.001
+  early_stopping_patience: 15
+
+data:
+  test_size: 0.2
+  random_state: 42
+
+features:
+  target_column: "Crop_Yield_ton"
+  numeric_features: ["Soil_Moisture", "Temperature", "Rainfall", "Fertilizer_Usage_kg"]
+  categorical_features: ["Crop_Type", "Region"]

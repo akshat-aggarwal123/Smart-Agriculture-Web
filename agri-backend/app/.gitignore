@@ -1,0 +1,40 @@
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.py~
+*.ipynb_checkpoints
+*.ipynb
+
+# Data Files
+*.csv
+*.xlsx
+*.json
+*.npy
+*.npz
+*.pkl
+*.joblib
+
+# Trained Models
+*.h5
+*.keras
+*.pb
+*.tflite
+*.pt
+*.pth
+
+# Logs & Checkpoints
+*.log
+logs/
+checkpoints/
+tensorboard/
+
+# Virtual Environment
+venv/
+env/
+.venv/
+.env/
+
+# Alembic
+alembic/versions/

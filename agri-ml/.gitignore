@@ -1,0 +1,46 @@
+# Python Artifacts
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.py~
+*.ipynb_checkpoints
+*.ipynb
+
+# Data Files
+*.xlsx
+*.json
+*.npy
+*.npz
+*.pkl
+*.joblib
+*.parquet
+
+# Trained Models
+*.h5
+*.keras
+*.pb
+*.tflite
+*.pt
+*.pth
+*.onnx
+*.paddle
+/models/
+/ml-models/
+
+# Logs & Checkpoints
+*.log
+logs/
+checkpoints/
+tensorboard/
+wandb/
+
+# Virtual Environment
+venv/
+env/
+.venv/
+.env/
+
+# OS-Specific Files
+.DS_Store
+Thumbs.db
