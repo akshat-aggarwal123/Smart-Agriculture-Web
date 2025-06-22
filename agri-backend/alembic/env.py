@@ -1,12 +1,23 @@
+import os
+import sys
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
-from app.models import Base
-from app.config import settings
 
+# Add root to Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Import Base from models
+from models.farm import Base
+
+# this is the Alembic Config object
 config = context.config
+
+# Set database URL from config.py
+from config import settings
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
+# Add your model's MetaData object
 target_metadata = Base.metadata
 
 def run_migrations_online():
@@ -23,6 +34,7 @@ def run_migrations_online():
             compare_type=True,
             compare_server_default=True
         )
+
         with context.begin_transaction():
             context.run_migrations()
 
