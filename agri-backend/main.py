@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from routes.route import router
 from utils.logger import setup_logger
-from config import settings
 
 # Initialize logger
 setup_logger()

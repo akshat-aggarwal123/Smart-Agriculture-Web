@@ -12,8 +12,9 @@ class Farm(Base, TimestampMixin):
     __tablename__ = "farms"
     
     id = Column(Integer, primary_key=True)
-    name = Column(String(100))
-    latitude = Column(Float)
-    longitude = Column(Float)
-    region = Column(String(50))
-    size_hectares = Column(Float)
+    farm_name = Column(String(100))
+    soil_moisture = Column("Soil_Moisture", Float)  # Must match training feature names
+    temperature = Column("Temperature", Float)
+    rainfall = Column("Rainfall", Float)
+    crop_type = Column("Crop_Type", String(50))
+    market_price = Column("Market_Price_per_ton", Float)

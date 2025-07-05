@@ -1,34 +1,30 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from services.ml_service import MLService
-from utils.helpers import get_db
 from models.farm import Farm
+from services.database import get_db
 
 router = APIRouter()
 
 def get_ml_service():
     return MLService()
 
-@router.get("/farms")
-async def get_farms(db: Session = Depends(get_db)):
-    return db.query(Farm).all()
-
-@router.get("/farms/{farm_id}")
-async def get_farm(farm_id: int, db: Session = Depends(get_db)):
-    return db.query(Farm).filter(Farm.id == farm_id).first()
-
 @router.post("/predict/yield")
 async def predict_yield(farm_id: int, db: Session = Depends(get_db), ml_service: MLService = Depends(get_ml_service)):
+    # Get farm data
     farm = db.query(Farm).filter(Farm.id == farm_id).first()
+    if not farm:
+        raise HTTPException(status_code=404, detail="Farm not found")
     
-    # Dummy features (replace with real data from Redis or database)
+    # Build features (must match training feature names)
     features = {
-        "soil_moisture": 45.2,
-        "temperature": 28.5,
-        "rainfall": 120.0,
-        "crop_type": "Wheat",
-        "market_price": 250.0
+        "Soil_Moisture": farm.soil_moisture,
+        "Temperature": farm.temperature,
+        "Rainfall": farm.rainfall,
+        "Crop_Type": farm.crop_type,
+        "Market_Price_per_ton": farm.market_price
     }
     
-    prediction = ml_service.predict_yield(features)
-    return prediction
+    # Make prediction
+    result = ml_service.predict_yield(features)
+    return result

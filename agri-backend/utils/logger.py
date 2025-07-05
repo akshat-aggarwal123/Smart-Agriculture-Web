@@ -6,7 +6,10 @@ def setup_logger():
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     
-    # Create console handler and set level to info
+    # Clear existing handlers
+    logger.handlers.clear()
+    
+    # Create console handler
     ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(logging.INFO)
     
@@ -15,10 +18,10 @@ def setup_logger():
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
-    # Add formatter to ch
+    # Add formatter to handler
     ch.setFormatter(formatter)
     
-    # Add ch to logger
+    # Add handler to logger
     logger.addHandler(ch)
     
     return logger

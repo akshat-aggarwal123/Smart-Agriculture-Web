@@ -17,12 +17,10 @@ __pycache__
 *.joblib
 
 # Trained Models
+*.pth
+*.pt
 *.h5
 *.keras
-*.pb
-*.tflite
-*.pt
-*.pth
 
 # Logs & Checkpoints
 *.log
@@ -35,6 +33,3 @@ venv/
 env/
 .venv/
 .env/
-
-# Alembic
-alembic/versions/
