@@ -1,0 +1,35 @@
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.py~
+*.ipynb_checkpoints
+*.ipynb
+
+# Data Files
+*.csv
+*.xlsx
+*.json
+*.npy
+*.npz
+*.pkl
+*.joblib
+
+# Trained Models
+*.pth
+*.pt
+*.h5
+*.keras
+
+# Logs & Checkpoints
+*.log
+logs/
+checkpoints/
+tensorboard/
+
+# Virtual Environment
+venv/
+env/
+.venv/
+.env/

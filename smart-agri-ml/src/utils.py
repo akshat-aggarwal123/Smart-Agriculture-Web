@@ -9,12 +9,13 @@ def to_tensor(data, device=None, dtype=torch.float32):
     if not device:
         device = get_device()
     if isinstance(data, np.ndarray):
-        tensor = torch.from_numpy(data).to(dtype).to(device)
+        tensor = torch.from_numpy(data).to(device)
     elif isinstance(data, torch.Tensor):
-        tensor = data.to(dtype).to(device)
+        tensor = data.to(device)
     else:
-        raise ValueError("Unsupported data type")
-    return tensor
+        # For non-array, non-tensor data
+        tensor = torch.tensor(data, device=device)
+    return tensor.to(dtype)  # Convert to specified dtype
 
 def inverse_scale(scaler, tensor):
     return torch.from_numpy(scaler.inverse_transform(tensor.cpu().numpy())).float()

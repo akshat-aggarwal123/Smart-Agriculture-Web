@@ -1,6 +1,6 @@
 import torch
-import joblib
 import numpy as np
+import pandas as pd
 from model_definitions import CropClassifier, YieldPredictor, SustainabilityPredictor
 from utils import get_device, to_tensor
 from data_preprocessing import preprocess_market_data, preprocess_farmer_data
@@ -76,9 +76,27 @@ class AgriPredictorTorch:
         }
     
     def _calculate_fertilizer(self, input_data):
-        """Same as before"""
-        # Implementation from previous version
+        """Calculate optimal fertilizer based on soil and crop"""
+        soil_ph = input_data['Soil_ph'][0]
+        crop_type = input_data['Crop_Type'][0]
+        
+        if soil_ph < 6.0:
+            return "Add lime to balance pH before fertilizing"
+        elif crop_type == 'Rice':
+            return "120-150 kg/ha NPK blend"
+        elif crop_type == 'Wheat':
+            return "100-130 kg/ha urea + DAP"
+        else:
+            return "80-100 kg/ha balanced NPK"
     
     def _calculate_water_efficiency(self, input_data):
-        """Same as before"""
-        # Implementation from previous version
+        """Calculate water efficiency recommendations"""
+        soil_moisture = input_data['Soil_Moisture'][0]
+        rainfall = input_data['Rainfall_mm'][0]
+        
+        if soil_moisture < 30 and rainfall < 100:
+            return "Drip irrigation recommended"
+        elif soil_moisture > 60 or rainfall > 200:
+            return "Reduce irrigation frequency"
+        else:
+            return "Maintain current irrigation schedule"

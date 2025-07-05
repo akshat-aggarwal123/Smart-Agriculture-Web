@@ -1,11 +1,18 @@
+import os
 import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
+import random
 from tqdm import tqdm
+from sklearn.preprocessing import LabelEncoder
 from data_preprocessing import preprocess_market_data, preprocess_farmer_data, create_dataloaders
-from model_definitions import CropClassifier
-from utils import get_device, EarlyStopping
+from model_definitions import CropEmbeddingModel
+from triplet_loss import TripletLoss
+from utils import get_device
+
+os.makedirs('models', exist_ok=True)
 
 # Load and preprocess data
 market_df = pd.read_csv('data/raw/market_researcher.csv')
@@ -23,92 +30,111 @@ y = market_df['Product'].values
 label_encoder = LabelEncoder()
 y_encoded = label_encoder.fit_transform(y)
 
-# Create dataloaders
-train_loader, test_loader = create_dataloaders(
-    combined, y_encoded, batch_size=32, test_size=0.2
+# Create dataloader with all data
+train_loader, _ = create_dataloaders(
+    combined, y_encoded, 
+    batch_size=len(combined),  # Single batch with all data
+    test_size=0.0,  # Use all data for training
+    is_classification=False
 )
 
 # Initialize model
 device = get_device()
-model = CropClassifier(input_size=combined.shape[1], num_classes=len(label_encoder.classes_))
+model = CropEmbeddingModel(input_size=combined.shape[1], embedding_size=64)
 model.to(device)
 
-# Training setup
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=3)
-early_stopping = EarlyStopping(patience=10)
+# Triplet loss
+criterion = TripletLoss(margin=1.0)
+optimizer = optim.AdamW(model.parameters(), lr=0.0001, weight_decay=0.01)
+scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=1000)
+
+# Get all data in one batch
+all_data, all_labels = next(iter(train_loader))
+all_data = all_data.to(device)
+all_labels = all_labels.to(device)
 
 # Training loop
-num_epochs = 100
-best_acc = 0.0
+num_epochs = 1000
+best_loss = float('inf')
 
 for epoch in range(num_epochs):
     model.train()
-    running_loss = 0.0
-    correct = 0
-    total = 0
     
-    # Training phase
-    for inputs, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}"):
-        inputs, labels = inputs.to(device), labels.to(device)
+    # Generate triplets
+    anchors, positives, negatives = [], [], []
+    
+    # For each sample as anchor
+    for i in range(len(all_data)):
+        anchor = all_data[i]
+        label = all_labels[i]
         
-        optimizer.zero_grad()
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-        
-        running_loss += loss.item()
-        _, predicted = torch.max(outputs, 1)
-        total += labels.size(0)
-        correct += (predicted == labels).sum().item()
-    
-    train_loss = running_loss / len(train_loader)
-    train_acc = correct / total
-    
-    # Validation phase
-    model.eval()
-    val_loss = 0.0
-    correct = 0
-    total = 0
-    
-    with torch.no_grad():
-        for inputs, labels in test_loader:
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
-            val_loss += loss.item()
+        # Find positive samples (same class)
+        same_class = torch.where(all_labels == label)[0]
+        if len(same_class) > 1:  # Ensure there's at least one other positive
+            positive_idx = random.choice(same_class[same_class != i])
+            positive = all_data[positive_idx]
             
-            _, predicted = torch.max(outputs, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+            # Find negative samples (different class)
+            different_class = torch.where(all_labels != label)[0]
+            if len(different_class) > 0:  # Ensure there's at least one negative
+                negative_idx = random.choice(different_class)
+                negative = all_data[negative_idx]
+                
+                anchors.append(anchor)
+                positives.append(positive)
+                negatives.append(negative)
     
-    val_loss /= len(test_loader)
-    val_acc = correct / total
+    # Skip if no triplets generated
+    if len(anchors) == 0:
+        print(f"Epoch {epoch+1}: No triplets generated")
+        continue
     
-    print(f"Epoch {epoch+1}/{num_epochs} | "
-          f"Train Loss: {train_loss:.4f}, Acc: {train_acc:.4f} | "
-          f"Val Loss: {val_loss:.4f}, Acc: {val_acc:.4f}")
+    # Convert to tensors
+    anchors = torch.stack(anchors)
+    positives = torch.stack(positives)
+    negatives = torch.stack(negatives)
     
-    # Update scheduler and early stopping
-    scheduler.step(val_loss)
-    early_stopping(val_loss)
+    # Forward pass
+    anchor_emb = model(anchors)
+    positive_emb = model(positives)
+    negative_emb = model(negatives)
+    
+    # Calculate loss
+    loss = criterion(anchor_emb, positive_emb, negative_emb)
+    
+    # Backward pass
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+    scheduler.step()
+    
+    # Calculate accuracy
+    with torch.no_grad():
+        # Compute pairwise distances
+        dist_pos = torch.norm(anchor_emb - positive_emb, dim=1)
+        dist_neg = torch.norm(anchor_emb - negative_emb, dim=1)
+        
+        # Count correct triplets
+        correct = torch.sum(dist_pos < dist_neg).item()
+        accuracy = correct / len(anchors)
+    
+    # Print progress
+    if (epoch + 1) % 10 == 0:
+        print(f"Epoch {epoch+1}/{num_epochs} | "
+              f"Loss: {loss.item():.4f} | "
+              f"Triplet Acc: {accuracy:.4f} | "
+              f"LR: {scheduler.get_last_lr()[0]:.6f}")
     
     # Save best model
-    if val_acc > best_acc:
-        best_acc = val_acc
+    if loss.item() < best_loss:
+        best_loss = loss.item()
         torch.save({
             'epoch': epoch,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-            'loss': val_loss,
-            'acc': val_acc,
+            'loss': loss.item(),
             'label_encoder': label_encoder,
-        }, 'models/crop_recommender.pt')
-    
-    if early_stopping.early_stop:
-        print("Early stopping triggered")
-        break
+            'embedding_size': 64
+        }, 'models/crop_recommender_triplet.pt')
 
-print("Training complete. Best Validation Accuracy: {:.4f}".format(best_acc))
+print("Training complete. Best Loss: {:.4f}".format(best_loss))
